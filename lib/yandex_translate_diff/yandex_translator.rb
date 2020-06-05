@@ -19,7 +19,7 @@ class Translator::YandexTranslator
   # @param from [String] язык, с которого перевести - русский по умолчанию
   # @param to [String] язык, на который перевести - английский по умолчанию
   # @return [String] массив переведенных предложений
-  def translate(text, from: 'ru', to: 'en')
+  def translate(text, from: 'ru', to: 'en', format: 'plain')
 
     # Проверить, способен ли переводчик перевести на заданные языки
     raise WrongLanguage unless @translator.langs.include?("#{from}-#{to}")
@@ -27,7 +27,7 @@ class Translator::YandexTranslator
     sentences = get_sentences(text).compact
 
     sentences.reduce('') do |memo, sentence|
-      memo << (lang?(sentence, lang: from) ? translate_sentence(sentence, from: from, to: to) : sentence) + " "
+      memo << (lang?(sentence, lang: from) ? translate_sentence(sentence, from: from, to: to, format: format) : sentence) + " "
     end
   end
 
@@ -36,8 +36,22 @@ class Translator::YandexTranslator
   # @param lang [String] язык, с которым сверяем
   # @return [Boolean] соответствие заданного языка языку текста
   def lang?(text, lang: 'en')
-    return @translator.detect(text) == lang if text.present?
+    return @translator.detect(text) == lang if text.size != 0
     false
+  end
+
+  # Определяет язык текста
+  # @param text [String] текст
+  # @return [String] язык текста
+  def lang(text)
+    return @translator.detect(text) if text.size != 0
+    false
+  end
+
+  # Определяет доступные языки для переводчика
+  # @return [String] языки, с которых и на которые доступен перевод
+  def langs()
+    @translator.langs()
   end
 
   # Переводит предложение с одного на другой заданный языки
@@ -45,12 +59,12 @@ class Translator::YandexTranslator
   # @param from [translatorString] язык, с которого перевести - русский по умолчанию
   # @param to [String] язык, на который перевести - английский по умолчанию
   # @return [String] переведенное предложение
-  def translate_sentence(sentence, from: 'ru', to: 'en')
+  def translate_sentence(sentence, from: 'ru', to: 'en', format: 'plain')
 
     # Перевести предложение, если лимит переводимых символов не превышен и языки заданы верно
     begin
       update_counter(sentence.length)
-      @translator.translate(sentence, from: from, to: to)
+      @translator.translate(sentence, from: from, to: to, format: format)
     rescue DailyQuotaExceeded => d
       raise d
     rescue WrongLanguage => w
@@ -89,7 +103,7 @@ class Translator::YandexTranslator
   # @param original_new [String] измененный текст, перевод которого нужно обновить
   # @param translated_past [String] перевод текста до его изменений
   # @return [String] обновленный перевод текста
-  def update_translation(original_past, original_new, translated_past)
+  def update_translation(original_past, original_new, translated_past, format: 'plain')
 
     # Подготовить тексты для обработки
     formatting_for_update(original_past, original_new, translated_past)
@@ -102,7 +116,7 @@ class Translator::YandexTranslator
     # Получить массив предложений английского текста
     eng = get_sentences(translated_past)
   
-    return translate(original_new) if eng.blank?
+    return translate(original_new, format: format) if eng.blank?
 
     # Обновить английский текст
     diff_size =
