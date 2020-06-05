@@ -3,6 +3,7 @@ require_relative 'languages.rb'
 require_relative 'yandex_translator'
 
 module Translator
+
   class TranslateConsole < Thor
 
     desc "hello NAME", "say hello to NAME"
@@ -34,8 +35,17 @@ module Translator
       puts "Translation: #{translated_text}"
     end
 
+    desc "translate to ru", "translates the text to russian"
+    def translate_ru  text, format: 'plain'
+      translator = Translator::YandexTranslator.new
+      current_language = translator.lang(text)
+      puts current_language
+      translated_text = translator.translate(text, from:current_language, to: 'ru', format: format)
+
+      puts "Translation: #{translated_text}"
+    end
+
   end
 end
 
 Translator::TranslateConsole.start(ARGV)
-
