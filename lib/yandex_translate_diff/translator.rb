@@ -6,11 +6,6 @@ module Translator
 
   class TranslateConsole < Thor
 
-    desc "hello NAME", "say hello to NAME"
-    def hello(name)
-      puts "Hello #{name}"
-    end
-
     desc "detect language", "figures out the language"
     def lang text
       translator = Translator::YandexTranslator.new
@@ -24,7 +19,7 @@ module Translator
     desc "list", "displays the list of supported languages.rb"
     def list
       translator = Translator::YandexTranslator.new
-      puts "Available languages.rb:", translator.langs()
+      puts "Available languages:", translator.langs()
     end
 
     desc "translate text", "translates the text"
