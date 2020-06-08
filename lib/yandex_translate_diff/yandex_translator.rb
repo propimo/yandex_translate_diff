@@ -1,5 +1,10 @@
+require 'yandex-translator'
+require 'pragmatic_segmenter'
+require 'punkt-segmenter'
+
 # Класс для перевода текста
-class Translator::YandexTranslator
+module Translator
+class YandexTranslator
 
   MONTH_LIMIT = 10_000_000 # Количество бесплатно переводимых символов в месяц
   DAY_LIMIT = MONTH_LIMIT / 31 # Количество бесплатно переводимых символов в день
@@ -7,8 +12,8 @@ class Translator::YandexTranslator
   DELETED_SENTENCE_REGEXP = /^\-/ # Удаленное предложение из текста в diff
   ADDED_SENTENCE_REGEXP = /^\+/ # Добавленное предложение в текст в diff
 
-  def initialize
-    @translator = Yandex::Translator.new(Rails.application.credentials.yandex_api_key)
+  def initialize()
+    @translator = Yandex::Translator.new(key)
 
     # Количество переведенных символов за день
     @day_counter = 0
@@ -87,7 +92,7 @@ class Translator::YandexTranslator
   # @param text [String] текст, который нужно разбить на предложения
   # @return Array[String] массив предложений
   def get_sentences(text)
-    return if text.blank?
+    return if text.size == 0
     Punkt::SentenceTokenizer
         .new(text)
         .sentences_from_text(text, output: :sentences_text)
@@ -242,9 +247,10 @@ class Translator::YandexTranslator
 
   # Ошибка недопустимого заданного языка
   class WrongLanguage < StandardError
-    def initialize(msg: 'Can\'t be translated: languages are incorrect')
+    def initialize(msg: 'Can\'t be translated: languages.rb are incorrect')
       super(msg)
     end
   end
-
 end
+end
+

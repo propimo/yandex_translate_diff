@@ -1,9 +1,9 @@
 module Translator
   class TranslatingService
 
-  def initialize(translator)
-    @translator = translator
-  end
+    def initialize(translator)
+      @translator = translator
+    end
 
     # Перевести информацию, хранящуюся в поле класса, с русского на английский язык
     # @param objects [Enumerable] набор объектов, в которых нужно перевести поле
