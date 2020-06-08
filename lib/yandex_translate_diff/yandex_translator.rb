@@ -2,19 +2,18 @@ require 'yandex-translator'
 require 'pragmatic_segmenter'
 require 'punkt-segmenter'
 require 'diffy'
+require 'nokogiri'
 
 # Класс для перевода текста
 module Translator
-
   class YandexTranslator
-
     MONTH_LIMIT = 10_000_000 # Количество бесплатно переводимых символов в месяц
     DAY_LIMIT = MONTH_LIMIT / 31 # Количество бесплатно переводимых символов в день
 
-    DELETED_SENTENCE_REGEXP = /^\-/ # Удаленное предложение из текста в diff
-    ADDED_SENTENCE_REGEXP = /^\+/ # Добавленное предложение в текст в diff
+    DELETED_SENTENCE_REGEXP = /^\-/.freeze # Удаленное предложение из текста в diff
+    ADDED_SENTENCE_REGEXP = /^\+/.freeze # Добавленное предложение в текст в diff
 
-    def initialize()
+    def initialize
       @translator = Yandex::Translator.new(key)
 
       # Количество переведенных символов за день
@@ -25,9 +24,9 @@ module Translator
     # @param text [String] текст для перевода
     # @param from [String] язык, с которого перевести - русский по умолчанию
     # @param to [String] язык, на который перевести - английский по умолчанию
+    # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] массив переведенных предложений
     def translate(text, from: 'ru', to: 'en', format: 'plain')
-
       # Проверить, способен ли переводчик перевести на заданные языки
       raise SameLanguages if from == to
       raise WrongLanguage unless @translator.langs.include?("#{from}-#{to}")
@@ -35,7 +34,7 @@ module Translator
       sentences = get_sentences(text).compact
 
       sentences.reduce('') do |memo, sentence|
-        memo << (lang?(sentence, lang: from) ? translate_sentence(sentence, from: from, to: to, format: format) : sentence) + " "
+        memo << (lang?(sentence, lang: from) ? translate_sentence(sentence, from: from, to: to, format: format) : sentence) + ' '
       end
     end
 
@@ -44,7 +43,8 @@ module Translator
     # @param lang [String] язык, с которым сверяем
     # @return [Boolean] соответствие заданного языка языку текста
     def lang?(text, lang: 'en')
-      return @translator.detect(text) == lang if text.size != 0
+      return @translator.detect(text) == lang unless text.empty?
+
       false
     end
 
@@ -52,44 +52,44 @@ module Translator
     # @param text [String] текст
     # @return [String] язык текста
     def lang(text)
-      return @translator.detect(text) if text.size != 0
+      return @translator.detect(text) unless text.empty?
+
       false
     end
 
     # Определяет доступные языки для переводчика
     # @return [String] языки, с которых и на которые доступен перевод
-    def langs()
-      @translator.langs()
+    def langs
+      @translator.langs
     end
 
     # Переводит предложение с одного на другой заданный языки
     # @param sentence [String] предложение для перевода
     # @param from [translatorString] язык, с которого перевести - русский по умолчанию
     # @param to [String] язык, на который перевести - английский по умолчанию
+    # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] переведенное предложение
     def translate_sentence(sentence, from: 'ru', to: 'en', format: 'plain')
-
       # Перевести предложение, если лимит переводимых символов не превышен и языки заданы верно
-      begin
-        update_counter(sentence.length)
-        @translator.translate(sentence, from: from, to: to, format: format)
-      rescue DailyQuotaExceeded => d
-        raise d
-      rescue WrongLanguage => w
-        raise w
-      rescue SameLanguages => s
-        raise s
-      end
+
+      update_counter(sentence.length)
+      @translator.translate(sentence, from: from, to: to, format: format)
+    rescue DailyQuotaExceeded => e
+      raise e
+    rescue WrongLanguage => e
+      raise e
+    rescue SameLanguages => e
+      raise e
     end
 
     # Обновляет счетчик символов в день
     # @param signs_count [Integer] количество символов, которые необходимо перевести
     # @return [Integer] текущий счетчик
     def update_counter(signs_count)
-
       # Если количество переведенных символов не позволяет перевести еще - выдать сообщение об ошибке
       @day_counter += signs_count
-      raise DailyQuotaExceeded if (@day_counter) >= DAY_LIMIT
+      raise DailyQuotaExceeded if @day_counter >= DAY_LIMIT
+
       @day_counter
     end
 
@@ -97,14 +97,16 @@ module Translator
     # @param text [String] текст, который нужно разбить на предложения
     # @return Array[String] массив предложений
     def get_sentences(text)
-      return if text.size == 0
+      return if text.empty?
+
       Punkt::SentenceTokenizer
-          .new(text)
-          .sentences_from_text(text, output: :sentences_text)
+        .new(text)
+        .sentences_from_text(text, output: :sentences_text)
     end
 
     def sentences_to_diff(sentences)
-      return if sentences.size == 0
+      return if sentences.empty?
+
       get_sentences(sentences).join("\n") + "\n"
     end
 
@@ -112,9 +114,9 @@ module Translator
     # @param original_past [String] прежний текст
     # @param original_new [String] измененный текст, перевод которого нужно обновить
     # @param translated_past [String] перевод текста до его изменений
+    # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] обновленный перевод текста
     def update_translation(original_past, original_new, translated_past, format: 'plain', from: 'ru', to: 'en')
-
       # Подготовить тексты для обработки
       formatting_for_update(original_past, original_new, translated_past)
 
@@ -126,32 +128,31 @@ module Translator
       # Получить массив предложений уже переведенного текста
       translated_text = get_sentences(translated_past)
 
-      return translate(original_new, format: format, from: from, to: to) if translated_text.blank?
+      return translate(original_new, format: format, from: from, to: to) if translated_text.nil?
 
       # Обновить переведенный текст
       diff_size =
-          if right_diff.size > left_diff.size
-            right_diff.size
-          else
-            left_diff.size
-          end
+        if right_diff.size > left_diff.size
+          right_diff.size
+        else
+          left_diff.size
+        end
 
       index = 0
 
       # Для каждого предложения из разницы оригиналов
       (0..diff_size).each do |diff_index|
-
         # Обновить текст: удалить удаленные, перевести и добавить новые предложения
         deleted = delete_sentence(diff_index, left_diff, translated_text, index)
-        added = add_sentence(diff_index, right_diff, translated_text, index)
+        added = add_sentence(diff_index, right_diff, translated_text, index, format: format)
 
-        index = index - 1 if deleted
-        index = index + 1 if added
+        index -= 1 if deleted
+        index += 1 if added
 
-        index = index + 1
+        index += 1
       end
 
-      translated_text.join(" ")
+      translated_text.join(' ')
     end
 
     # Находит удаленные и добавленные предложения, сравнив два текста
@@ -159,7 +160,6 @@ module Translator
     # @param new_text [String] измененный текст
     # @return [JSON] массив удаленных и массив добавленных предложений
     def get_diffs(past_text, new_text)
-
       # Разбить новый и старый русский текст на предложения через \n
       tmp_new = sentences_to_diff(new_text)
       tmp_old = sentences_to_diff(past_text)
@@ -178,18 +178,13 @@ module Translator
     # @param original_new [String] измененный текст, перевод которого нужно обновить
     # @param translated_past [String] перевод текста до его изменений
     def formatting_for_update(original_past, original_new, translated_past)
-
       # Убрать </p> с конца текста
       original_new.chomp!('</p>')
       original_past.chomp!('</p>')
 
       # Заменить специальные символы
       [original_past, original_new, translated_past]
-          .select(&:present?)
-          .each do |text|
-                  text.gsub!('&nbsp;', ' ')
-                  Nokogiri::HTML.parse(text)
-                end
+        .map! { |text| text.gsub!('&nbsp;', ' '); Nokogiri::HTML.parse(text) unless text.nil? }
     end
 
     # Удаляет предложение из текста, если оно было удалено в оригинале
@@ -199,7 +194,7 @@ module Translator
     # @param text [Array] текст, который нужно удалить
     # @return успешность операции: удалено / не удалено
     def delete_sentence(diff_index, left_diff, text, index)
-      return false if text.size == 0 || index>text.size || diff_index>left_diff.size || left_diff[diff_index] !~ DELETED_SENTENCE_REGEXP
+      return false if text.nil? || text.empty? || index > text.size || diff_index > left_diff.size || left_diff[diff_index] !~ DELETED_SENTENCE_REGEXP
 
       text.delete(text[index])
       true
@@ -212,9 +207,10 @@ module Translator
     # @param text [Array] текст, в который нужно добавить предложение
     # @param from [String] язык, с которого перевести - русский по умолчанию
     # @param to [String] язык, на который перевести - английский по умолчанию
+    # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return успешность операции: добавлено / не добавлено
-    def add_sentence(diff_index, right_diff, text, index, from: 'ru', to: 'en')
-      return false if diff_index>right_diff.size || right_diff[diff_index] !~ ADDED_SENTENCE_REGEXP
+    def add_sentence(diff_index, right_diff, text, index, from: 'ru', to: 'en', format: 'plain')
+      return false if diff_index > right_diff.size || right_diff[diff_index] !~ ADDED_SENTENCE_REGEXP
 
       # Выделить новое предложение
       diff_sentence = right_diff[diff_index]
@@ -222,16 +218,15 @@ module Translator
       sentence_to_translate = diff_sentence[1, diff_sentence.size]
 
       # Перевести
-      sentence_to_add = translate_sentence(sentence_to_translate, from: from, to: to)
+      sentence_to_add = translate_sentence(sentence_to_translate, from: from, to: to, format: format)
 
       # Вставить перевод нового предложения
-      if text.size == 0
+      if text.empty?
         text.push(sentence_to_add)
       else
         text.insert(index, sentence_to_add)
       end
 
-      p text
       true
     end
 
