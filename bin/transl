@@ -22,14 +22,15 @@ else
   from, to, text = case params.shift
                    when /(.*):(.*)/ then
                      [$1, $2, params.join(' ')]
-                   when /(.*)/ then
-                     [nil, $1, params.join(' ')]
                    when /[lang]/ then
                      [nil, nil, params.join(' ')]
-                     YandexTranslateDiff::TranslateConsole.start ["lang", text]
+                   when /(.*)/ then
+                     [nil, $1, params.join(' ')]
                    end
 
-  if from.nil?
+  if from.nil? && to.nil?
+    YandexTranslateDiff::TranslateConsole.start ["lang", text]
+  elsif from.nil?
     YandexTranslateDiff::TranslateConsole.start ["translate_to", to, text]
   else
     YandexTranslateDiff::TranslateConsole.start ["translate", from, to, text]
