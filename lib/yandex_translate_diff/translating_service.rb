@@ -46,6 +46,9 @@ module Translator
           rescue Translator::YandexTranslator::WrongLanguage => w
             p w.message
             break
+          rescue Translator::YandexTranslator::SameLanguages => s
+            p s.message
+            break
           end
         end
       end
