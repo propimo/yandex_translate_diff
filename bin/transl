@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+
+require 'yandex_translate_diff/translate_console'
+
+if ARGV.size == 0
+  puts YandexTranslateDiff::TranslateConsole::USAGE
+elsif ARGV.size == 1
+  if ARGV[0] == 'list'
+    YandexTranslateDiff::TranslateConsole.start ["list"]
+  end
+else
+  params = []
+
+  index = 0
+
+  while index < ARGV.size do
+    param = ARGV[index]
+    params << param
+    index = index + 1
+  end
+
+  from, to, text = case params.shift
+                   when /(.*):(.*)/ then
+                     [$1, $2, params.join(' ')]
+                   when /(.*)/ then
+                     [nil, $1, params.join(' ')]
+                   when /[lang]/ then
+                     [nil, nil, params.join(' ')]
+                     YandexTranslateDiff::TranslateConsole.start ["lang", text]
+                   end
+
+  if from.nil?
+    YandexTranslateDiff::TranslateConsole.start ["translate_to", to, text]
+  else
+    YandexTranslateDiff::TranslateConsole.start ["translate", from, to, text]
+  end
+
+end
