@@ -1,4 +1,4 @@
-module Translator
+module YandexTranslateDiff
   class TranslatingService
     def initialize(translator)
       @translator = translator
@@ -37,16 +37,16 @@ module Translator
 
           count += 1
           p "------[#{count}] #{objects.name} with id #{object.id} has been translated------"
-        rescue Translator::YandexTranslator::DailyQuotaExceeded => e
+        rescue YandexTranslateDiff::YandexTranslator::DailyQuotaExceeded => e
           p e.message
           break
-        rescue Translator::YandexTranslator::EmptyText => e
+        rescue YandexTranslateDiff::YandexTranslator::EmptyText => e
           p e.message
           break
-        rescue Translator::YandexTranslator::WrongLanguage => e
+        rescue YandexTranslateDiff::YandexTranslator::WrongLanguage => e
           p e.message
           break
-        rescue Translator::YandexTranslator::SameLanguages => e
+        rescue YandexTranslateDiff::YandexTranslator::SameLanguages => e
           p e.message
           break
         end

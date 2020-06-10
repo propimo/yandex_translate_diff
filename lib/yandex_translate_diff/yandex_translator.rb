@@ -4,8 +4,9 @@ require 'punkt-segmenter'
 require 'diffy'
 require 'nokogiri'
 
+
 # Класс для перевода текста
-module Translator
+module YandexTranslateDiff
   class YandexTranslator
     MONTH_LIMIT = 10_000_000 # Количество бесплатно переводимых символов в месяц
     DAY_LIMIT = MONTH_LIMIT / 31 # Количество бесплатно переводимых символов в день
@@ -27,6 +28,12 @@ module Translator
     # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] массив переведенных предложений
     def translate(text, from: 'ru', to: 'en', format: 'plain')
+      # Проверить, не пуст ли текст
+      check_text(text)
+
+      # Проверить заданный формат
+      check_format(format)
+      
       # Проверить, способен ли переводчик перевести на заданные языки
       raise SameLanguages if from == to
       raise WrongLanguage unless @translator.langs.include?("#{from}-#{to}")
@@ -43,7 +50,8 @@ module Translator
     # @param lang [String] язык, с которым сверяем
     # @return [Boolean] соответствие заданного языка языку текста
     def lang?(text, lang: 'en')
-      return @translator.detect(text) == lang unless text.empty?
+      check_text(text)
+      return @translator.detect(text) == lang
 
       false
     end
@@ -52,7 +60,8 @@ module Translator
     # @param text [String] текст
     # @return [String] язык текста
     def lang(text)
-      return @translator.detect(text) unless text.empty?
+      check_text(text)
+      return @translator.detect(text)
 
       false
     end
@@ -70,16 +79,20 @@ module Translator
     # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] переведенное предложение
     def translate_sentence(sentence, from: 'ru', to: 'en', format: 'plain')
-      # Перевести предложение, если лимит переводимых символов не превышен и языки заданы верно
+      # Проверить, не пуст ли текст
+      check_text(sentence)
 
-      update_counter(sentence.length)
-      @translator.translate(sentence, from: from, to: to, format: format)
-    rescue DailyQuotaExceeded => e
-      raise e
-    rescue WrongLanguage => e
-      raise e
-    rescue SameLanguages => e
-      raise e
+      # Проверить заданный формат
+      check_format(format)
+
+      begin
+        # Перевести предложение, если лимит переводимых символов не превышен и языки заданы верно
+        update_counter(sentence.length)
+
+        @translator.translate(sentence, from: from, to: to, format: format)
+      rescue DailyQuotaExceeded => e
+        raise e
+      end
     end
 
     # Обновляет счетчик символов в день
@@ -97,7 +110,7 @@ module Translator
     # @param text [String] текст, который нужно разбить на предложения
     # @return Array[String] массив предложений
     def get_sentences(text)
-      return if text.empty?
+      return if text.empty? || text.nil?
 
       Punkt::SentenceTokenizer
         .new(text)
@@ -105,7 +118,7 @@ module Translator
     end
 
     def sentences_to_diff(sentences)
-      return if sentences.empty?
+      return if sentences.empty? || sentences.nil?
 
       get_sentences(sentences).join("\n") + "\n"
     end
@@ -117,6 +130,10 @@ module Translator
     # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return [String] обновленный перевод текста
     def update_translation(original_past, original_new, translated_past, format: 'plain', from: 'ru', to: 'en')
+
+      # Проверить заданный формат
+      check_format(format)
+
       # Подготовить тексты для обработки
       formatting_for_update(original_past, original_new, translated_past)
 
@@ -194,7 +211,8 @@ module Translator
     # @param text [Array] текст, который нужно удалить
     # @return успешность операции: удалено / не удалено
     def delete_sentence(diff_index, left_diff, text, index)
-      return false if text.nil? || text.empty? || index > text.size || diff_index > left_diff.size || left_diff[diff_index] !~ DELETED_SENTENCE_REGEXP
+      return false if text.nil? || text.empty? || index > text.size ||
+          diff_index > left_diff.size || left_diff[diff_index] !~ DELETED_SENTENCE_REGEXP
 
       text.delete(text[index])
       true
@@ -210,7 +228,11 @@ module Translator
     # @param format [String] формат текста: html-текст в html-формате, plain-обычный (по умолчанию)
     # @return успешность операции: добавлено / не добавлено
     def add_sentence(diff_index, right_diff, text, index, from: 'ru', to: 'en', format: 'plain')
-      return false if diff_index > right_diff.size || right_diff[diff_index] !~ ADDED_SENTENCE_REGEXP
+
+      # Проверить заданный формат
+      check_format(format)
+
+      return false if text.nil? || diff_index > right_diff.size || right_diff[diff_index] !~ ADDED_SENTENCE_REGEXP
 
       # Выделить новое предложение
       diff_sentence = right_diff[diff_index]
@@ -230,6 +252,16 @@ module Translator
       true
     end
 
+    # Проверить валидность заданного текста
+    def check_text(text)
+      raise EmptyText if text.nil? || text.empty?
+    end
+
+    # Проверить валидность заданного формата текста
+    def check_format(format)
+      raise WrongFormat unless format == 'html' || format == 'plain'
+    end
+
     # Ошибка превышенного допустимого количества символов в день
     class DailyQuotaExceeded < StandardError
       def initialize(msg: 'Daily limit is exceeded')
@@ -239,21 +271,28 @@ module Translator
 
     # Ошибка неверных входных данных
     class EmptyText < StandardError
-      def initialize(msg: 'Can\'t be translated: text is empty')
+      def initialize(msg: 'Can\'t be translated: text is empty.')
         super(msg)
       end
     end
 
     # Ошибка недопустимого заданного языка
     class WrongLanguage < StandardError
-      def initialize(msg: 'Can\'t be translated: languages are incorrect')
+      def initialize(msg: 'Can\'t be translated: languages are incorrect.')
         super(msg)
       end
     end
 
     # Ошибка недопустимого заданного языка
     class SameLanguages < StandardError
-      def initialize(msg: 'The text is already translated')
+      def initialize(msg: 'The text is already translated.')
+        super(msg)
+      end
+    end
+
+    # Ошибка неверно заданного формата
+    class WrongFormat < StandardError
+      def initialize(msg: 'The format is incorrect: try \'plain\' or \'html\'.')
         super(msg)
       end
     end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Translator
+module YandexTranslateDiff
   LANGUAGES = {
     'az' => 'azerbaijani',
     'sq' => 'albanian',

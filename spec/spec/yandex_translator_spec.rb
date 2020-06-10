@@ -1,9 +1,9 @@
 require 'spec_helper'
 require '../../yandex_translate_diff/lib/yandex_translate_diff/yandex_translator'
 
-describe Translator::YandexTranslator do
+describe YandexTranslateDiff::YandexTranslator do
 
-  before { @translator = Translator::YandexTranslator.new }
+  before { @translator = YandexTranslateDiff::YandexTranslator.new }
 
   context "plain" do
     it "should translate correctly plain sentence ru-en" do
