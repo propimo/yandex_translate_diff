@@ -50,20 +50,14 @@ module YandexTranslateDiff
     # @param lang [String] язык, с которым сверяем
     # @return [Boolean] соответствие заданного языка языку текста
     def lang?(text, lang: 'en')
-      check_text(text)
       return @translator.detect(text) == lang
-
-      false
     end
 
     # Определяет язык текста
     # @param text [String] текст
     # @return [String] язык текста
     def lang(text)
-      check_text(text)
       return @translator.detect(text)
-
-      false
     end
 
     # Определяет доступные языки для переводчика
@@ -255,11 +249,13 @@ module YandexTranslateDiff
     # Проверить валидность заданного текста
     def check_text(text)
       raise EmptyText if text.nil? || text.empty?
+      true
     end
 
     # Проверить валидность заданного формата текста
     def check_format(format)
       raise WrongFormat unless format == 'html' || format == 'plain'
+      true
     end
 
     # Ошибка превышенного допустимого количества символов в день
