@@ -4,4 +4,8 @@ language: ruby
 cache: bundler
 rvm:
   - 2.6.3
+deploy:
+  provider: rubygems
+  gem: yandex_translate_diff
+  gemspec: yandex_translate_diff.gemspec
 before_install: gem install bundler -v 1.17.2

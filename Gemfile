@@ -11,7 +11,7 @@ gem 'yandex-translator'
 # Ruby port of the NLTK Punkt sentence segmentation algorithm (http://blog.talleye.com)
 gem 'punkt-segmenter'
 
-# A rule-based sentence boundary detection gem that works out-of-the-box across many languages (https://github.com/diasks2/pragmatic_segmenter)
+# A rule-based sentence boundary detection gem that works out-of-the-box across many languages.rb (https://github.com/diasks2/pragmatic_segmenter)
 gem 'pragmatic_segmenter'
 
 # Nokogiri for HTML
